@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Dựa trên code system và các file đã cung cấp, đây là file Markdown documentation hoàn chỉnh:
 
 ---
@@ -729,3 +730,6 @@ For issues or questions:
 ***
 
 **End of Documentation**
+=======
+# embedded_system
+>>>>>>> 07888fbde33f0ebf03d1a45f3b10e2b4c64c03b3
