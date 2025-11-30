@@ -6,6 +6,7 @@ set(MX_Defines_Syms
 	USE_HAL_DRIVER 
 	STM32F103xB
     $<$<CONFIG:Debug>:DEBUG>
+    STM32_PRINTF_FLOAT
 )
 
 # STM32CubeMX generated include paths
@@ -38,7 +39,7 @@ set(MX_Application_Src
     ${CMAKE_SOURCE_DIR}/BSP/src/bsp_moisture.c
     ${CMAKE_SOURCE_DIR}/BSP/src/bsp_pump.c
     ${CMAKE_SOURCE_DIR}/BSP/src/bsp_rtc.c
-    ${CMAKE_SOURCE_DIR}/BSP/src/bsp_dht22.c
+    ${CMAKE_SOURCE_DIR}/BSP/src/bsp_dht11.c
     ${CMAKE_SOURCE_DIR}/Middleware/src/mid_button.c
     ${CMAKE_SOURCE_DIR}/Middleware/src/mid_display.c
     ${CMAKE_SOURCE_DIR}/Application/src/app_irrigation.c

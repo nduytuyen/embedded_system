@@ -9,7 +9,7 @@
 #include "bsp_moisture.h"
 #include "bsp_pump.h"
 #include "bsp_rtc.h"
-#include "bsp_dht22.h"
+#include "bsp_dht11.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -117,8 +117,8 @@ void APP_Irrigation_Init(ADC_HandleTypeDef *hadc, I2C_HandleTypeDef *hi2c, UART_
         printf("RTC initialized successfully.\r\n");
     }
     
-    if (!BSP_DHT22_Init()) {
-        printf("WARNING: DHT22 sensor init failed!\r\n");
+    if (!BSP_DHT11_Init()) {
+        printf("WARNING: DHT11 sensor init failed!\r\n");
     }
     current_state = STATE_STARTUP;
     last_update_time = HAL_GetTick();
@@ -135,7 +135,9 @@ void APP_Irrigation_Run(void)
     static SystemState_t last_state = STATE_STARTUP;
     
     MID_Button_Update();
-    
+    BSP_DHT11_Read();
+    dht_temperature = BSP_DHT11_GetTemperature();
+    dht_humidity = BSP_DHT11_GetHumidity();
     // Update readings every 500ms
     if ((HAL_GetTick() - last_update_time) >= 500) {
         moisture_percent = BSP_Moisture_Get_Percent();
@@ -145,16 +147,16 @@ void APP_Irrigation_Run(void)
         // Debug output every 5 seconds
         static uint32_t last_debug_time = 0;
         if ((HAL_GetTick() - last_debug_time) >= 5000) {
-            printf("[%02d:%02d:%02d] State: %d, Moisture: %d%%, Pump: %s\r\n",
-                   current_time.hours, current_time.minutes, current_time.seconds,
-                   current_state, moisture_percent,
-                   BSP_Pump_GetState() ? "ON" : "OFF");
-            last_debug_time = HAL_GetTick();
+            printf("[%02d:%02d:%02d] State: %d, Moisture: %d%%, Pump: %s, Temp: %.1fC, Humidity: %.1f%%\r\n",
+               current_time.hours, current_time.minutes, current_time.seconds,
+               current_state, moisture_percent,
+               BSP_Pump_GetState() ? "ON" : "OFF",
+               dht_temperature, dht_humidity);
         }
-    }
-    
-    // Log state transitions
-    if (current_state != last_state) {
+        }
+        
+        // Log state transitions
+        if (current_state != last_state) {
         MID_Display_Clear();
         printf("\r\n>>> STATE CHANGE: %d -> %d <<<\r\n", last_state, current_state);
         last_state = current_state;
@@ -244,9 +246,11 @@ static void handle_state_menu(void)
  */
 static void handle_state_manual(void)
 {
-    BSP_DHT22_Read();
-    dht_temperature = BSP_DHT22_GetTemperature();
-    dht_humidity = BSP_DHT22_GetHumidity();
+    BSP_DHT11_Read();
+    dht_temperature = BSP_DHT11_GetTemperature();
+    dht_humidity = BSP_DHT11_GetHumidity();
+    printf("MANUAL: Moisture %d%%, Temp %.1fC, Humidity %.1f%%\r\n",
+           moisture_percent, dht_temperature, dht_humidity);
     if ((HAL_GetTick() - last_display_switch) >= 5000) {
         display_mode = !display_mode;
         last_display_switch = HAL_GetTick();
@@ -272,10 +276,11 @@ static void handle_state_manual(void)
  */
 static void handle_state_auto(void)
 {
-    BSP_DHT22_Read();
-    dht_temperature = BSP_DHT22_GetTemperature();
-    dht_humidity = BSP_DHT22_GetHumidity();
-    
+    BSP_DHT11_Read();
+    dht_temperature = BSP_DHT11_GetTemperature();
+    dht_humidity = BSP_DHT11_GetHumidity();
+    printf("AUTO: Moisture %d%%, Temp %.1fC, Humidity %.1f%%\r\n",
+           moisture_percent, dht_temperature, dht_humidity);
     bool current_pump_state = BSP_Pump_GetState();
     
     if (moisture_percent < AUTO_MOISTURE_LOW_THRESHOLD) {

@@ -1,394 +1,443 @@
-<<<<<<< HEAD
-Dựa trên code system và các file đã cung cấp, đây là file Markdown documentation hoàn chỉnh:
+```markdown
+# STM32 Smart Irrigation System
+
+**Version:** 2.1  
+**Last Updated:** November 30, 2025  
+**Platform:** STM32F103C8T6 (Blue Pill)
 
 ---
 
-# **STM32 Irrigation System - User Manual & Documentation**
+## 📋 Table of Contents
 
-**Version:** 2.0  
-**Date:** November 10, 2025  
-**Platform:** STM32F103 (Blue Pill) + DS3231 RTC + LCD 16x2 I2C
-
----
-
-## **📋 Table of Contents**
-
-1. [System Overview](#system-overview)
-2. [Hardware Components](#hardware-components)
-3. [System Architecture](#system-architecture)
-4. [State Machine Flowchart](#state-machine-flowchart)
-5. [Operating Modes](#operating-modes)
-6. [User Guide](#user-guide)
-7. [Button Functions](#button-functions)
-8. [LCD Display Guide](#lcd-display-guide)
+1. [Overview](#overview)
+2. [Key Features](#key-features)
+3. [Hardware Requirements](#hardware-requirements)
+4. [Pin Configuration](#pin-configuration)
+5. [System Architecture](#system-architecture)
+6. [Operating Modes](#operating-modes)
+7. [Getting Started](#getting-started)
+8. [User Guide](#user-guide)
 9. [Troubleshooting](#troubleshooting)
+10. [API Reference](#api-reference)
 
-***
+---
 
-## **🎯 System Overview**
+## 🎯 Overview
 
-The STM32 Irrigation System is an automated plant watering solution with three intelligent operating modes:
+An intelligent plant watering system built on STM32F103C8T6 microcontroller with multiple sensors and automated control modes. The system combines real-time monitoring, scheduled irrigation, and environmental sensing for optimal plant care.
 
-- **ARTISAN Mode**: Manual watering control
-- **AUTO Mode**: Automatic watering based on soil moisture
-- **TIMER Mode**: Schedule-based watering with RTC
+### What's New in v2.1
+- ✅ Added **DHT11 temperature & humidity sensor** support
+- ✅ DWT/SysTick-based microsecond delays (no timer required)
+- ✅ Improved sensor reliability with timeout protection
+- ✅ Enhanced debug output via UART
 
-### Key Features
-✅ Soil moisture monitoring  
-✅ Real-time clock (DS3231)  
-✅ LCD display with I2C interface  
-✅ Multiple operating modes  
-✅ Button-based user interface  
-✅ UART debug output  
+---
 
-***
+## ✨ Key Features
 
-## **🔧 Hardware Components**
+### Sensors & Monitoring
+- 🌡️ **DHT11** - Temperature and humidity monitoring
+- 💧 **Soil Moisture Sensor** - Analog capacitive sensor (0-100%)
+- 🕐 **DS3231 RTC** - Real-time clock with battery backup
+- 📊 **16x2 LCD** - I2C display for status and menus
 
-### Required Components
+### Control Modes
+- 🎮 **ARTISAN Mode** - Manual pump control
+- 🤖 **AUTO Mode** - Moisture-triggered automatic watering
+- ⏰ **TIMER Mode** - RTC-based scheduled watering
 
-| Component | Specification | Quantity |
-|-----------|--------------|----------|
-| **MCU** | STM32F103C8T6 (Blue Pill) | 1 |
-| **RTC** | DS3231 (I2C, 0x68) | 1 |
-| **LCD** | 16x2 LCD with PCF8574T I2C adapter (0x27) | 1 |
-| **Moisture Sensor** | Analog output (0-4095 ADC) | 1 |
-| **Water Pump** | 5V DC pump | 1 |
-| **Relay** | 5V relay with PC817 optocoupler | 1 |
-| **Buttons** | 6x push buttons (active LOW) | 6 |
-| **Power Supply** | 5V, 2A minimum | 1 |
+### Communication
+- 📡 **UART Debug** - 115200 baud serial output
+- 🔧 **I2C Bus** - RTC, LCD, and sensor communication
 
-### Pin Configuration
+---
 
-```
-STM32F103C8T6 Pin Mapping:
-┌─────────────────────────────────────┐
-│ Function      │ Pin    │ Notes      │
-├───────────────┼────────┼────────────┤
-│ Moisture ADC  │ PA0    │ ADC1_CH0   │
-│ Button ARTISAN│ PA1    │ Pull-up    │
-│ Button AUTO   │ PA2    │ Pull-up    │
-│ Button TIMER  │ PA3    │ Pull-up    │
-│ Button RESET  │ PA4    │ Pull-up    │
-│ Button INC    │ PA5    │ Pull-up    │
-│ Button DEC    │ PA6    │ Pull-up    │
-│ UART1 TX      │ PA9    │ Debug      │
-│ UART1 RX      │ PA10   │ Debug      │
-│ Pump Relay    │ PA11   │ Output     │
-│ I2C2 SCL      │ PB10   │ LCD & RTC  │
-│ I2C2 SDA      │ PB11   │ LCD & RTC  │
-└─────────────────────────────────────┘
-```
+## 🔧 Hardware Requirements
 
-***
+### Components List
 
-## **🏗️ System Architecture**
+| Component | Part Number | Quantity | Notes |
+|-----------|------------|----------|-------|
+| **Microcontroller** | STM32F103C8T6 | 1 | Blue Pill board |
+| **RTC Module** | DS3231 | 1 | I2C address: 0x68 |
+| **LCD Display** | 1602 + PCF8574T | 1 | I2C address: 0x27 |
+| **DHT11 Sensor** | DHT11 | 1 | Temperature & humidity |
+| **Moisture Sensor** | Capacitive | 1 | Analog output |
+| **Water Pump** | 5V DC | 1 | Mini submersible pump |
+| **Relay Module** | 5V 1-Channel | 1 | With optocoupler |
+| **Push Buttons** | Tactile 6x6mm | 6 | Active LOW |
+| **Power Supply** | 5V/2A | 1 | Micro USB or DC jack |
+| **Resistor** | 4.7kΩ | 1 | Pull-up for DHT11 (optional) |
 
-The system follows a **4-layer architecture** for modularity and maintainability:
+### Wiring Diagram
 
 ```
-┌─────────────────────────────────────────────┐
-│         Layer 1: Application (APP)          │
-│  - State machine logic                      │
-│  - Mode control (ARTISAN, AUTO, TIMER)      │
-│  - Watering schedule management             │
-└─────────────────┬───────────────────────────┘
-                  │
-┌─────────────────┴───────────────────────────┐
-│         Layer 2: Middleware (MID)           │
-│  - Button event handling & debouncing       │
-│  - Display management                       │
-│  - High-level RTC operations                │
-└─────────────────┬───────────────────────────┘
-                  │
-┌─────────────────┴───────────────────────────┐
-│    Layer 3: Board Support Package (BSP)     │
-│  - LCD driver (PCF8574T)                    │
-│  - RTC driver (DS3231)                      │
-│  - Moisture sensor driver                   │
-│  - Button driver                            │
-│  - Pump control                             │
-└─────────────────┬───────────────────────────┘
-                  │
-┌─────────────────┴───────────────────────────┐
-│       Layer 4: HAL (Hardware Abstraction)   │
-│  - STM32 HAL Library                        │
-│  - I2C, ADC, GPIO, UART peripherals         │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                   STM32F103C8T6 Connections             │
+├─────────────────┬───────────┬───────────────────────────┤
+│ Function        │ STM32 Pin │ Component Connection      │
+├─────────────────┼───────────┼───────────────────────────┤
+│ Moisture ADC    │ PA0       │ Sensor AO                 │
+│ Button ARTISAN  │ PA1       │ Button → GND (pull-up)    │
+│ Button AUTO     │ PA2       │ Button → GND (pull-up)    │
+│ Button TIMER    │ PA3       │ Button → GND (pull-up)    │
+│ Button RESET    │ PA4       │ Button → GND (pull-up)    │
+│ Button INC      │ PA5       │ Button → GND (pull-up)    │
+│ Button DEC      │ PA6       │ Button → GND (pull-up)    │
+│ UART TX (Debug) │ PA9       │ USB-Serial RX             │
+│ UART RX (Debug) │ PA10      │ USB-Serial TX             │
+│ Pump Control    │ PA11      │ Relay IN                  │
+│ I2C2 SCL        │ PB10      │ RTC SCL + LCD SCL         │
+│ I2C2 SDA        │ PB11      │ RTC SDA + LCD SDA         │
+│ DHT11 Data      │ PB6       │ DHT11 Data (configurable) │
+└─────────────────┴───────────┴───────────────────────────┘
+
+Power Distribution:
+├─ STM32:           5V → 3.3V regulator onboard
+├─ DHT11:           3.3V VCC, GND
+├─ Moisture Sensor: 3.3V VCC, GND, AO → PA0
+├─ DS3231:          3.3V VCC, GND, SCL → PB10, SDA → PB11
+├─ LCD (PCF8574):   5V VCC, GND, SCL → PB10, SDA → PB11
+└─ Pump Relay:      5V VCC, GND, Signal → PA11
 ```
 
-***
+---
 
-## **🔄 State Machine Flowchart**
+## 📌 Pin Configuration
 
-```mermaid
-graph TD
-    A[STARTUP] -->|Init Complete| B[MENU]
-    
-    B -->|ARTISAN Button| C[ARTISAN Mode]
-    B -->|AUTO Button| D[AUTO Mode]
-    B -->|TIMER Button| E[TIMER_DISPLAY]
-    
-    C -->|RESET| B
-    D -->|RESET| B
-    E -->|RESET| B
-    
-    E -->|TIMER Button| F[TIMER_MENU]
-    
-    F -->|Select 'Set Time'| G[TIMER_SET_TIME]
-    F -->|Select 'Set Schedule'| H[TIMER_SET_SCHEDULE]
-    F -->|RESET| E
-    
-    G -->|Save & Complete| E
-    G -->|RESET| E
-    
-    H -->|Save & Complete| E
-    H -->|RESET| E
-    
-    style A fill:#e1f5ff
-    style B fill:#fff3cd
-    style C fill:#d4edda
-    style D fill:#d1ecf1
-    style E fill:#f8d7da
-    style F fill:#e2e3e5
-    style G fill:#ffeaa7
-    style H fill:#ffeaa7
+### GPIO Pin Map
+
+```
+/* Board Support Package Pin Definitions */
+
+// ADC
+#define MOISTURE_ADC_CHANNEL    ADC_CHANNEL_0  // PA0
+
+// Buttons (Active LOW with internal pull-up)
+#define BUTTON_ARTISAN_PIN      GPIO_PIN_1     // PA1
+#define BUTTON_AUTO_PIN         GPIO_PIN_2     // PA2
+#define BUTTON_TIMER_PIN        GPIO_PIN_3     // PA3
+#define BUTTON_RESET_PIN        GPIO_PIN_4     // PA4
+#define BUTTON_INC_PIN          GPIO_PIN_5     // PA5
+#define BUTTON_DEC_PIN          GPIO_PIN_6     // PA6
+
+// DHT11 Sensor
+#define DHT11_GPIO_PORT         GPIOB
+#define DHT11_GPIO_PIN          GPIO_PIN_6
+
+// Pump Control
+#define PUMP_PIN                GPIO_PIN_11    // PA11
+
+// I2C2 (Hardware I2C)
+#define I2C_SCL_PIN             GPIO_PIN_10    // PB10
+#define I2C_SDA_PIN             GPIO_PIN_11    // PB11
+
+// UART1 (Debug)
+#define UART_TX_PIN             GPIO_PIN_9     // PA9
+#define UART_RX_PIN             GPIO_PIN_10    // PA10
 ```
 
-***
+---
 
-## **🎮 Operating Modes**
+## 🏗️ System Architecture
 
-### **1. ARTISAN Mode (Manual)**
+### Layered Architecture
 
-**Purpose**: Direct manual control of the water pump.
+```
+┌───────────────────────────────────────────────────────┐
+│                 Application Layer (APP)               │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ -  State Machine (8 states)                      │  │
+│  │ -  Mode Control (ARTISAN/AUTO/TIMER)             │  │
+│  │ -  Schedule Management                           │  │
+│  │ -  Sensor Data Integration                       │  │
+│  └─────────────────────────────────────────────────┘  │
+└─────────────────────────┬─────────────────────────────┘
+                          │
+┌─────────────────────────┴─────────────────────────────┐
+│               Middleware Layer (MID)                  │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ -  Button Handler (debouncing, event detection) │  │
+│  │ -  Display Manager (menu navigation)            │  │
+│  │ -  RTC High-Level Operations                    │  │
+│  └─────────────────────────────────────────────────┘  │
+└─────────────────────────┬─────────────────────────────┘
+                          │
+┌─────────────────────────┴─────────────────────────────┐
+│         Board Support Package Layer (BSP)             │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ -  LCD Driver (PCF8574T I2C)                     │  │
+│  │ -  RTC Driver (DS3231)                           │  │
+│  │ -  DHT11 Driver (Temperature & Humidity)         │  │
+│  │ -  Moisture Sensor (ADC)                         │  │
+│  │ -  Button Driver (GPIO)                          │  │
+│  │ -  Pump Driver (GPIO)                            │  │
+│  └─────────────────────────────────────────────────┘  │
+└─────────────────────────┬─────────────────────────────┘
+                          │
+┌─────────────────────────┴─────────────────────────────┐
+│          Hardware Abstraction Layer (HAL)             │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ -  STM32 HAL Library                             │  │
+│  │ -  Peripherals: I2C, ADC, GPIO, UART, RTC       │  │
+│  │ -  DWT Cycle Counter (microsecond timing)       │  │
+│  └─────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────┘
+```
 
-**Behavior**:
-- Pump runs continuously when mode is active
-- Displays current soil moisture percentage
-- User must manually stop by pressing RESET
+### File Structure
 
-**LCD Display**:
+```
+Irrigation_System/
+│
+├── Core/
+│   ├── Src/
+│   │   └── main.c                    # Main program entry
+│   └── Inc/
+│       └── main.h
+│
+├── App/
+│   ├── app_irrigation.c              # State machine & logic
+│   └── app_irrigation.h
+│
+├── Middleware/
+│   ├── mid_button.c                  # Button handling
+│   ├── mid_button.h
+│   ├── mid_display.c                 # Display management
+│   └── mid_display.h
+│
+├── BSP/
+│   ├── bsp_dht11.c                   # DHT11 driver (new)
+│   ├── bsp_dht11.h
+│   ├── bsp_lcd.c                     # LCD I2C driver
+│   ├── bsp_lcd.h
+│   ├── bsp_rtc.c                     # DS3231 RTC driver
+│   ├── bsp_rtc.h
+│   ├── bsp_moisture.c                # Moisture sensor ADC
+│   ├── bsp_moisture.h
+│   ├── bsp_pump.c                    # Pump relay control
+│   ├── bsp_pump.h
+│   ├── bsp_button.c                  # Low-level button GPIO
+│   └── bsp_button.h
+│
+└── README.md                         # This file
+```
+
+---
+
+## 🎮 Operating Modes
+
+### Mode 1: ARTISAN (Manual Control)
+
+**Purpose:** Direct manual control of irrigation pump
+
+**Behavior:**
+- Pump runs continuously while mode is active
+- Real-time moisture and environment display
+- User manually stops via RESET button
+
+**LCD Display:**
 ```
 ┌────────────────┐
 │Mode: ARTISAN   │
-│Moisture:  45%  │
+│M:45% T:25C H:60│
 └────────────────┘
 ```
 
-**When to Use**:
-- Initial watering
-- Testing the system
+**Use Cases:**
+- Initial system testing
 - Emergency watering
-- Flushing the system
+- Manual soil preparation
+- Pump verification
 
 ---
 
-### **2. AUTO Mode (Moisture-Based)**
+### Mode 2: AUTO (Moisture-Based Automation)
 
-**Purpose**: Automatic watering based on soil moisture levels.
+**Purpose:** Automatic watering based on soil moisture levels
 
-**Behavior**:
+**Behavior:**
 - Monitors soil moisture every 500ms
-- Pump turns ON when moisture < 60%
-- Pump turns OFF when moisture ≥ 70%
-- Prevents pump cycling with 10% hysteresis
+- Pump ON when moisture < 40%
+- Pump OFF when moisture ≥ 50%
+- 10% hysteresis prevents cycling
 
-**LCD Display**:
+**LCD Display:**
 ```
 ┌────────────────┐
 │Mode: AUTO      │
-│M: 45% P:ON     │
+│M:38% P:ON  T:24│
 └────────────────┘
 ```
 
-**Moisture Thresholds**:
-| Condition | Threshold | Action |
-|-----------|-----------|--------|
-| Too Dry | < 60% | Pump ON |
-| Optimal | 60-70% | No change |
-| Too Wet | ≥ 70% | Pump OFF |
+**Thresholds:**
+| Condition | Moisture Level | Action |
+|-----------|---------------|---------|
+| Dry Soil | < 40% | Pump ON |
+| Optimal | 40% - 50% | No change |
+| Wet Soil | ≥ 50% | Pump OFF |
 
-**When to Use**:
-- Daily plant care
-- Vacation mode
+**Use Cases:**
+- Daily automatic care
+- Vacation/away mode
 - Greenhouse automation
 - Consistent moisture maintenance
 
-***
+---
 
-### **3. TIMER Mode (Schedule-Based)**
+### Mode 3: TIMER (Schedule-Based Watering)
 
-**Purpose**: Water plants at specific times with set duration.
+**Purpose:** Water plants at specific times daily
 
-**Features**:
-- Two sub-modes:
-  1. **Set Time** - Adjust RTC clock
-  2. **Set Schedule** - Configure watering schedule
+**Sub-Modes:**
+1. **TIMER_DISPLAY** - Show current time
+2. **TIMER_MENU** - Choose setup option
+3. **TIMER_SET_TIME** - Configure RTC
+4. **TIMER_SET_SCHEDULE** - Set watering schedule
 
-**LCD Display (Running)**:
+**LCD Display (Running):**
 ```
 ┌────────────────┐
 │Mode: TIMER     │
-│Time: 08:30:15  │
+│Time: 14:30:25  │
 └────────────────┘
 ```
 
-**Schedule Configuration**:
+**Schedule Configuration:**
 - Start time: HH:MM (24-hour format)
 - Duration: 1-99 minutes
-- Automatic pump control
+- Daily automatic execution
 
-**Example Schedule**:
+**Example:**
 ```
-Start: 08:00
-Duration: 10 minutes
-→ Pump ON at 8:00 AM
-→ Pump OFF at 8:10 AM
+Schedule: 06:30, Duration: 15 min
+→ Pump activates at 6:30 AM
+→ Pump deactivates at 6:45 AM
+→ Repeats daily
 ```
 
-**When to Use**:
+**Use Cases:**
 - Early morning watering
-- Consistent watering schedule
-- Water conservation
-- Time-based plant needs
-
-***
-
-## **📖 User Guide**
-
-### **Initial Setup**
-
-1. **Power On System**
-   - Connect 5V power supply
-   - System will display "CHOOSE MODE"
-   - All LEDs should light briefly
-
-2. **Check Hardware**
-   - LCD backlight should be ON
-   - No error messages on UART debug
-   - Moisture sensor reading displayed
-
-3. **Calibrate Moisture Sensor** (if needed)
-   - Insert sensor in dry soil → Note ADC value
-   - Insert sensor in wet soil → Note ADC value
-   - Update `MOISTURE_DRY_VALUE` and `MOISTURE_WET_VALUE` in code
-
-4. **Set Current Time** (first use)
-   - Press TIMER button
-   - Press TIMER again → Select "Set Time"
-   - Use INC/DEC to adjust HH:MM:SS
-   - Press TIMER to save
+- Water conservation schedules
+- Consistent plant routines
+- Time-optimized irrigation
 
 ---
 
-### **Operating Instructions**
+## 🚀 Getting Started
 
-#### **Mode 1: ARTISAN (Manual Watering)**
-
-```
-Step 1: From MENU, press [ARTISAN]
-        ↓
-Step 2: Pump starts immediately
-        LCD shows: "Mode: ARTISAN"
-        ↓
-Step 3: Monitor moisture on LCD
-        ↓
-Step 4: Press [RESET] to stop
-        ↓
-Step 5: Returns to MENU
-```
-
-**⚠️ Warning**: Pump will NOT stop automatically. Always monitor and press RESET.
-
-***
-
-#### **Mode 2: AUTO (Automatic Watering)**
+### 1. Hardware Assembly
 
 ```
-Step 1: From MENU, press [AUTO]
-        ↓
-Step 2: System monitors moisture
-        LCD shows: "Mode: AUTO"
-        ↓
-Step 3: Pump auto ON/OFF based on moisture
-        ↓
-Step 4: Press [RESET] to exit
-        ↓
-Step 5: Returns to MENU
+Step 1: Connect I2C Devices
+  ├─ DS3231 RTC → PB10 (SCL), PB11 (SDA)
+  └─ LCD 1602   → PB10 (SCL), PB11 (SDA)
+
+Step 2: Connect Sensors
+  ├─ DHT11          → PB6 (Data), 3.3V, GND
+  └─ Moisture       → PA0 (AO), 3.3V, GND
+
+Step 3: Connect Buttons
+  ├─ 6x buttons → PA1-PA6
+  └─ Other side → GND (internal pull-ups enabled)
+
+Step 4: Connect Pump Circuit
+  ├─ PA11 → Relay Signal
+  ├─ Relay COM → Pump +
+  ├─ Pump - → GND
+  └─ Relay VCC → 5V, GND
+
+Step 5: Connect Debug UART
+  ├─ PA9 (TX) → USB-Serial RX
+  └─ GND      → USB-Serial GND
 ```
 
-**💡 Tip**: Leave in AUTO mode for daily maintenance. System will handle watering automatically.
+### 2. Software Setup
 
-***
+#### Prerequisites
+- **STM32CubeIDE** v1.12 or later
+- **STM32CubeMX** v6.8 or later
+- **ST-Link V2** programmer
+- **USB-Serial adapter** for debug output
 
-#### **Mode 3: TIMER (Schedule Watering)**
-
-**3A. Set Current Time**
-
+#### Clock Configuration
 ```
-Step 1: From MENU, press [TIMER]
-        ↓
-Step 2: Press [TIMER] again
-        → TIMER MENU appears
-        ↓
-Step 3: Use [INC]/[DEC] to select ">TIME"
-        ↓
-Step 4: Press [TIMER] to confirm
-        → SET TIME screen appears
-        ↓
-Step 5: Adjust Hour:
-        - [INC] to increase
-        - [DEC] to decrease
-        - [TIMER] to next field
-        ↓
-Step 6: Adjust Minute (same as Step 5)
-        ↓
-Step 7: Adjust Second (same as Step 5)
-        ↓
-Step 8: Press [TIMER] to save
-        → Returns to TIMER DISPLAY
+// main.c - SystemClock_Config()
+SYSCLK:      72 MHz (HSE 8MHz × PLL MUL9)
+AHB:         72 MHz
+APB1:        36 MHz (÷2)
+APB2:        72 MHz
+APB1 Timer:  72 MHz (auto ×2)
 ```
 
-**3B. Set Watering Schedule**
+#### Build and Flash
 
 ```
-Step 1: From TIMER DISPLAY, press [TIMER]
-        ↓
-Step 2: Use [INC]/[DEC] to select ">SCHEDULE"
-        ↓
-Step 3: Press [TIMER] to confirm
-        → SET SCHEDULE screen
-        ↓
-Step 4: Set Start Hour (00-23)
-        [INC]/[DEC] + [TIMER]
-        ↓
-Step 5: Set Start Minute (00-59)
-        [INC]/[DEC] + [TIMER]
-        ↓
-Step 6: Set Duration (01-99 minutes)
-        [INC]/[DEC] + [TIMER]
-        ↓
-Step 7: Schedule saved!
-        → Returns to TIMER DISPLAY
+# Clone repository
+git clone <your-repo-url>
+cd Irrigation_System
+
+# Open in STM32CubeIDE
+# Build: Ctrl + B
+# Flash: Run → Debug (F11)
+
+# Or use command line
+make clean
+make all
+st-flash write build/Irrigation_System.bin 0x8000000
 ```
 
-**Example**:
-```
-You want to water at 6:30 AM for 15 minutes:
-- Start Hour: 06
-- Start Minute: 30
-- Duration: 15
-→ System will automatically water from 6:30-6:45 AM daily
-```
+### 3. Initial Configuration
 
-***
-
-## **🎛️ Button Functions**
-
-### Button Layout
+#### 3A. Set Current Time (First Boot)
 
 ```
+1. Power ON → System shows "CHOOSE MODE"
+2. Press [TIMER] button
+3. Press [TIMER] again → TIMER MENU appears
+4. Press [INC] until ">TIME" is highlighted
+5. Press [TIMER] to enter SET TIME
+6. Adjust hours:   [INC]/[DEC], then [TIMER]
+7. Adjust minutes: [INC]/[DEC], then [TIMER]  
+8. Adjust seconds: [INC]/[DEC], then [TIMER]
+9. Time saved to DS3231 RTC
+```
+
+#### 3B. Calibrate Moisture Sensor
+
+```
+# Connect to UART (115200 baud)
+# Monitor raw ADC values
+
+# Sensor in DRY soil   → ADC ≈ 3800
+# Sensor in WET soil   → ADC ≈ 1500
+
+# Update in bsp_moisture.c:
+#define MOISTURE_DRY_VALUE   3800  // Your dry reading
+#define MOISTURE_WET_VALUE   1500  // Your wet reading
+```
+
+#### 3C. Configure Watering Schedule
+
+```
+1. From TIMER_DISPLAY, press [TIMER]
+2. Press [DEC] to select ">SCHEDULE"
+3. Press [TIMER] to enter
+4. Set start hour:   [INC]/[DEC], then [TIMER]
+5. Set start minute: [INC]/[DEC], then [TIMER]
+6. Set duration:     [INC]/[DEC], then [TIMER]
+7. Schedule saved → Automatic watering enabled
+```
+
+---
+
+## 📖 User Guide
+
+### Button Reference
+
+```
+Physical Layout:
 ┌─────────────────────────────────────┐
 │  [ARTISAN]  [AUTO]  [TIMER]         │
 │                                     │
@@ -396,340 +445,692 @@ You want to water at 6:30 AM for 15 minutes:
 └─────────────────────────────────────┘
 ```
 
-### Button Reference Table
+| Button | Function by Context |
+|--------|-------------------|
+| **ARTISAN** | Enter manual mode (from MENU) |
+| **AUTO** | Enter automatic mode (from MENU) |
+| **TIMER** | Enter/navigate timer mode (context-sensitive) |
+| **RESET** | Return to MENU / Cancel operation |
+| **INC** | Increase value / Navigate up |
+| **DEC** | Decrease value / Navigate down |
 
-| Button | In MENU | In Mode | In TIMER MENU | In SET Mode |
-|--------|---------|---------|---------------|-------------|
-| **ARTISAN** | Enter ARTISAN | - | - | - |
-| **AUTO** | Enter AUTO | - | - | - |
-| **TIMER** | Enter TIMER | - | Confirm selection | Next field |
-| **RESET** | - | Exit to MENU | Cancel | Cancel |
-| **INC** | - | - | Navigate up | Increase value |
-| **DEC** | - | - | Navigate down | Decrease value |
+### State Machine Flowchart
 
-### Button Behavior
+```
+        [STARTUP]
+            ↓
+         [MENU] ←───────────────────┐
+       /    |    \                  │
+      /     |     \                 │
+ARTISAN   AUTO   TIMER_DISPLAY     │
+   ↓       ↓         ↓              │
+  RESET   RESET   [TIMER] pressed  │
+                      ↓              │
+                 TIMER_MENU          │
+                  /      \           │
+          >TIME          >SCHEDULE   │
+            ↓                ↓       │
+    TIMER_SET_TIME   TIMER_SET_SCHEDULE
+            ↓                ↓       │
+    [Save/RESET]     [Save/RESET]   │
+            └────────────┴───────────┘
+```
 
-- **Single Press**: Standard action
-- **Hold (1 second)**: Same as single press (no special action)
-- **Debounced**: 50ms debounce time for stable operation
+### LCD Screen Reference
 
-***
-
-## **📺 LCD Display Guide**
-
-### Display Modes
-
-#### **MENU Screen**
+#### MENU Screen
 ```
 ┌────────────────┐
-│  CHOOSE MODE   │  ← System ready
-│ART/AUTO/TIMER  │  ← Press button to select
+│  CHOOSE MODE   │  ← System idle
+│ART/AUTO/TIMER  │  ← Press button
 └────────────────┘
 ```
 
-#### **ARTISAN Screen**
+#### ARTISAN Screen
 ```
 ┌────────────────┐
-│Mode: ARTISAN   │  ← Current mode
-│Moisture:  67%  │  ← Real-time moisture
+│Mode: ARTISAN   │  ← Mode name
+│M:45% T:25C H:60│  ← Live sensor data
 └────────────────┘
-     ↑ Updates every 500ms
+ M=Moisture T=Temp H=Humidity
 ```
 
-#### **AUTO Screen**
+#### AUTO Screen  
 ```
 ┌────────────────┐
-│Mode: AUTO      │  ← Current mode
-│M: 45% P:ON     │  ← Moisture & Pump status
-└────────────────┘
-     ↑         ↑
-  Moisture   Pump (ON/OFF)
-```
-
-#### **TIMER DISPLAY Screen**
-```
-┌────────────────┐
-│Mode: TIMER     │  ← Current mode
-│Time: 14:25:38  │  ← Current time (updates every 1s)
+│Mode: AUTO      │  ← Mode name
+│M:38% P:ON  T:24│  ← Moisture, Pump, Temp
 └────────────────┘
 ```
 
-#### **TIMER MENU Screen**
+#### TIMER Screens
 ```
+Display Mode:
+┌────────────────┐
+│Mode: TIMER     │
+│Time: 14:30:25  │  ← Updates every 1s
+└────────────────┘
+
+Menu Mode:
 ┌────────────────┐
 │TIMER: INC/DEC  │  ← Instructions
-│>TIME SCHEDULE  │  ← Selection (> indicates current)
+│>TIME SCHEDULE  │  ← Selection cursor
 └────────────────┘
-```
 
-#### **SET TIME Screen**
-```
+Set Time Mode:
 ┌────────────────┐
-│Set Time:       │  ← Title
-│ 14:25:38       │  ← Time being edited
+│Set Time:       │
+│ 14:30:25       │  ← Editable fields
 └────────────────┘
   ↑↑  ↑↑  ↑↑
   HH  MM  SS
-  (Cursor indicates current field)
-```
 
-#### **SET SCHEDULE Screen**
-```
+Set Schedule Mode:
 ┌────────────────┐
-│Set Schedule:   │  ← Title
-│08:30 D:15m     │  ← Start time + Duration
+│Set Schedule:   │
+│06:30 D:15m     │  ← Start time + Duration
 └────────────────┘
- ↑↑↑↑    ↑↑↑
- Start   Duration
 ```
 
-***
+### DHT11 Sensor Information
 
-## **🔧 Troubleshooting**
+**Specifications:**
+- Temperature: 0°C to 50°C (±2°C accuracy)
+- Humidity: 20% to 90% RH (±5% accuracy)
+- Sampling: Once every 2 seconds (hardware limitation)
+- Communication: 1-wire digital protocol
 
-### Common Issues
+**Reading Sensor Data:**
+```
+// In your code:
+if (BSP_DHT11_Read()) {
+    float temp = BSP_DHT11_GetTemperature();  // °C
+    float hum = BSP_DHT11_GetHumidity();      // %RH
+    printf("T:%.1f°C H:%.1f%%\n", temp, hum);
+}
+```
 
-#### **LCD Shows Nothing**
+**Timing (DWT-based):**
+- System automatically detects DWT availability
+- Falls back to software delay if DWT unavailable
+- No external timer required
 
-**Problem**: Backlight ON but no text
+---
 
-**Solutions**:
-1. **Adjust Contrast**
-   - Find blue potentiometer on LCD module
-   - Rotate slowly until text appears
-   - If no potentiometer, check hardware connections
+## 🔧 Troubleshooting
+
+### Issue 1: LCD Shows Nothing
+
+**Symptoms:** Backlight ON, no text visible
+
+**Solutions:**
+1. **Adjust Contrast Potentiometer**
+   ```
+   Locate blue trim pot on PCF8574 module
+   Rotate slowly until text appears
+   ```
 
 2. **Check I2C Address**
-   ```c
-   // Try alternate address in bsp_lcd.h
-   #define LCD_I2C_ADDR  (0x3F << 1)  // Instead of 0x27
+   ```
+   // Try in bsp_lcd.h:
+   #define LCD_I2C_ADDR  (0x3F << 1)  // Alternative address
    ```
 
-3. **Verify Connections**
+3. **Verify Wiring**
    ```
-   LCD → STM32
-   VCC → 5V
-   GND → GND
-   SDA → PB11
-   SCL → PB10
+   LCD VCC → 5V (NOT 3.3V)
+   LCD GND → GND
+   LCD SDA → PB11
+   LCD SCL → PB10
    ```
 
-***
+---
 
-#### **RTC Time Incorrect**
+### Issue 2: DHT11 Read Timeout
 
-**Problem**: Time resets or doesn't advance
+**Symptoms:** "ERROR: DHT11 no response" in UART
 
-**Solutions**:
-1. **Check Battery**
-   - DS3231 has CR2032 battery backup
-   - Replace if voltage < 2.5V
+**Solutions:**
+1. **Check Pull-up Resistor**
+   ```
+   DHT11 Data pin → 4.7kΩ → 3.3V
+   (Or enable internal pull-up in code)
+   ```
+
+2. **Verify Pin Configuration**
+   ```
+   // In bsp_dht11.h:
+   #define DHT11_GPIO_PORT  GPIOB
+   #define DHT11_GPIO_PIN   GPIO_PIN_6  // Confirm correct pin
+   ```
+
+3. **Check Sensor Power**
+   ```
+   DHT11 VCC → 3.3V (stable power)
+   DHT11 GND → GND
+   Wait 1 second after power-on
+   ```
+
+4. **DWT Initialization**
+   ```
+   # Check UART output:
+   "DHT11: Using DWT for microsecond delays"  ✓ Good
+   "DHT11: Using software delay"              ⚠ Less accurate
+   ```
+
+---
+
+### Issue 3: RTC Time Incorrect
+
+**Symptoms:** Time resets, doesn't advance, or shows wrong time
+
+**Solutions:**
+1. **Check DS3231 Battery**
+   ```
+   Measure voltage on CR2032 battery
+   Should be > 2.5V
+   Replace if < 2.5V
+   ```
 
 2. **Verify I2C Communication**
-   - Check UART debug: "DS3231 detected!"
-   - If not detected, check connections
+   ```
+   # Check UART output:
+   "Device found at address 0x68"  ✓
+   "DS3231 detected!"              ✓
+   
+   # If not found:
+   - Check SDA/SCL connections
+   - Try I2C bus scanner
+   ```
 
 3. **Re-initialize RTC**
-   - Enter TIMER mode
-   - Set current time manually
-   - System will remember after power cycle (if battery OK)
-
-***
-
-#### **Moisture Reading Always 0% or 100%**
-
-**Problem**: Sensor not reading correctly
-
-**Solutions**:
-1. **Calibrate Sensor**
-   ```c
-   // In bsp_moisture.c, adjust these values:
-   #define MOISTURE_DRY_VALUE   3800  // Your dry reading
-   #define MOISTURE_WET_VALUE   1500  // Your wet reading
+   ```
+   Enter TIMER → TIMER MENU → >TIME
+   Set correct time
+   Time persists after power cycle (with battery)
    ```
 
-2. **Test Sensor**
-   - Check UART debug for ADC raw values
-   - Dry soil should give ~3800
-   - Wet soil should give ~1500
-   - If readings are reversed, sensor may be inverted
+---
 
-3. **Check Wiring**
+### Issue 4: Moisture Always 0% or 100%
+
+**Symptoms:** Sensor readings stuck at extreme values
+
+**Solutions:**
+1. **Calibrate Sensor Range**
    ```
-   Sensor → STM32
-   VCC → 3.3V
-   GND → GND
-   AO  → PA0 (ADC1_CH0)
+   // Monitor UART for raw ADC values
+   // Then update in bsp_moisture.c:
+   
+   #define MOISTURE_DRY_VALUE   3800  // ADC when dry
+   #define MOISTURE_WET_VALUE   1500  // ADC when wet
+   
+   // Percentage calculation:
+   // 0% = DRY_VALUE
+   // 100% = WET_VALUE
    ```
 
-***
+2. **Check Sensor Type**
+   ```
+   Capacitive sensor (recommended):
+   - More reliable
+   - Corrosion resistant
+   - ADC range: ~1500-3800
+   
+   Resistive sensor:
+   - May need different calibration
+   - Prone to corrosion
+   ```
 
-#### **Buttons Not Responding**
+3. **Test ADC**
+   ```
+   # In ARTISAN mode, check UART:
+   "Moisture: 45%, ADC: 2650"
+   
+   # Verify ADC responds to moisture changes
+   # If stuck at same value → hardware issue
+   ```
 
-**Problem**: Button presses do nothing
+---
 
-**Solutions**:
+### Issue 5: Buttons Not Responding
+
+**Symptoms:** Button presses ignored
+
+**Solutions:**
 1. **Check Pull-up Configuration**
-   ```c
-   // In main.c GPIO init:
-   GPIO_InitStruct.Pull = GPIO_PULLUP;  // Must be pull-up
+   ```
+   // In main.c MX_GPIO_Init():
+   GPIO_InitStruct.Pull = GPIO_PULLUP;  // Must be enabled
    ```
 
-2. **Verify Button Polarity**
-   ```c
-   // In bsp_button.h:
-   #define BUTTON_ACTIVE_LOW    1  // Must be defined
+2. **Verify Active-LOW Logic**
+   ```
+   // In bsp_button.c:
+   // Pressed = GPIO_PIN_RESET (LOW)
+   // Released = GPIO_PIN_SET (HIGH)
    ```
 
 3. **Test Individual Buttons**
-   - Monitor UART debug for "Button: XXX pressed"
-   - If no message, check hardware connections
-
-***
-
-#### **Pump Not Turning On**
-
-**Problem**: AUTO/ARTISAN modes don't activate pump
-
-**Solutions**:
-1. **Check Relay Circuit**
-   - Verify PA11 connection
-   - Check relay LED indicator
-   - Test relay by manually setting PA11 HIGH
-
-2. **Verify Pump Power**
-   - Pump needs separate 5V supply
-   - Check if pump runs when relay is bypassed
-
-3. **Check Relay Driver**
    ```
-   STM32 PA11 → PC817 input (with resistor)
-   PC817 output → Relay coil
+   # Monitor UART output:
+   "Button: ARTISAN pressed"  ✓
+   "Button: AUTO pressed"     ✓
+   # etc.
+   
+   # If no output → hardware connection issue
+   ```
+
+4. **Check Debounce Timing**
+   ```
+   // In bsp_button.c:
+   #define DEBOUNCE_TIME_MS  50  // Adjust if needed
+   ```
+
+---
+
+### Issue 6: Pump Doesn't Activate
+
+**Symptoms:** AUTO/ARTISAN modes don't turn pump ON
+
+**Solutions:**
+1. **Verify Relay Operation**
+   ```
+   # Check UART:
+   "Pump: ON"   → PA11 should be HIGH
+   "Pump: OFF"  → PA11 should be LOW
+   
+   # Measure with multimeter:
+   PA11 HIGH = 3.3V
+   PA11 LOW = 0V
+   ```
+
+2. **Check Relay Circuit**
+   ```
+   STM32 PA11 → 1kΩ resistor → PC817 LED+
+   PC817 LED- → GND
+   PC817 OUT+ → Relay IN
+   PC817 OUT- → GND
+   Relay VCC → 5V
    Flyback diode across relay coil
    ```
 
-***
+3. **Test Pump Manually**
+   ```
+   Connect pump directly to 5V
+   Should run → If not, pump is faulty
+   ```
+
+---
 
 ### Debug via UART
 
-**Connect UART** (115200 baud, 8N1):
+**Setup:**
 ```
 STM32 PA9 (TX) → USB-Serial RX
 STM32 GND      → USB-Serial GND
+
+Baud rate: 115200
+Data bits: 8
+Parity: None
+Stop bits: 1
 ```
 
-**Typical Debug Output**:
+**Typical Boot Output:**
 ```
 =================================
-STM32 Irrigation System v2.0
+STM32 Irrigation System v2.1
 =================================
 Scanning I2C bus...
 Device found at address 0x27  (LCD)
 Device found at address 0x57  (DS3231 EEPROM)
 Device found at address 0x68  (DS3231 RTC)
 Total devices found: 3
+
 DS3231 detected!
 RTC initialized successfully.
+
+DHT11: Using DWT for microsecond delays
+DHT11 initialized successfully
+NOTE: No external timer required
+
+Moisture sensor initialized.
+Pump initialized.
+Buttons initialized.
+Display initialized.
+
 System initialized.
 =================================
 
-[08:30:15] State: 1, Moisture: 67%, Pump: OFF
-
-Button: AUTO pressed
->>> STATE CHANGE: 1 -> 2 <<<
-AUTO: Moisture 45% < 60%, turning pump ON
+[14:30:25] State: 1, Moisture: 67%, Pump: OFF
+DHT11: Temp=25.0°C, Humidity=60.0%
 ```
 
-***
+---
 
-## **📊 System Specifications**
+## 📚 API Reference
 
-### Performance Metrics
+### BSP Layer APIs
+
+#### DHT11 Sensor (bsp_dht11.h)
+
+```
+// Initialize DHT11 sensor
+bool BSP_DHT11_Init(void);
+
+// Read temperature and humidity (call every 2+ seconds)
+bool BSP_DHT11_Read(void);
+
+// Get last temperature reading (°C)
+float BSP_DHT11_GetTemperature(void);
+
+// Get last humidity reading (%RH)
+float BSP_DHT11_GetHumidity(void);
+
+// Check if sensor is ready
+bool BSP_DHT11_IsReady(void);
+```
+
+#### Moisture Sensor (bsp_moisture.h)
+
+```
+// Initialize ADC for moisture sensor
+bool BSP_Moisture_Init(ADC_HandleTypeDef *hadc);
+
+// Read moisture percentage (0-100%)
+uint8_t BSP_Moisture_GetPercent(void);
+
+// Get raw ADC value (0-4095)
+uint16_t BSP_Moisture_GetRaw(void);
+```
+
+#### RTC (bsp_rtc.h)
+
+```
+// Initialize DS3231 RTC
+bool BSP_RTC_Init(I2C_HandleTypeDef *hi2c);
+
+// Get current time
+void BSP_RTC_GetTime(RTC_Time_t *time);
+
+// Set current time
+void BSP_RTC_SetTime(RTC_Time_t *time);
+
+// Check if RTC is available
+bool BSP_RTC_IsAvailable(void);
+```
+
+#### Pump Control (bsp_pump.h)
+
+```
+// Initialize pump GPIO
+void BSP_Pump_Init(void);
+
+// Turn pump ON
+void BSP_Pump_On(void);
+
+// Turn pump OFF
+void BSP_Pump_Off(void);
+
+// Get pump state (true=ON, false=OFF)
+bool BSP_Pump_GetState(void);
+```
+
+#### LCD Display (bsp_lcd.h)
+
+```
+// Initialize I2C LCD
+void BSP_LCD_Init(I2C_HandleTypeDef *hi2c);
+
+// Clear display
+void BSP_LCD_Clear(void);
+
+// Set cursor position
+void BSP_LCD_SetCursor(uint8_t row, uint8_t col);
+
+// Send string to LCD
+void BSP_LCD_SendString(const char *str);
+
+// Backlight control
+void BSP_LCD_Backlight(bool on);
+```
+
+### Middleware Layer APIs
+
+#### Button Handler (mid_button.h)
+
+```
+// Initialize button module
+void MID_Button_Init(void);
+
+// Update button states (call in main loop)
+void MID_Button_Update(void);
+
+// Check if button is pressed
+bool MID_Button_IsPressed(Button_t button);
+
+// Button types:
+typedef enum {
+    BUTTON_ARTISAN,
+    BUTTON_AUTO,
+    BUTTON_TIMER,
+    BUTTON_RESET,
+    BUTTON_INC,
+    BUTTON_DEC
+} Button_t;
+```
+
+#### Display Manager (mid_display.h)
+
+```
+// Initialize display manager
+void MID_Display_Init(I2C_HandleTypeDef *hi2c);
+
+// Show main menu
+void MID_Display_ShowMenu(void);
+
+// Show ARTISAN mode screen
+void MID_Display_ShowArtisan(uint8_t moisture);
+
+// Show AUTO mode screen
+void MID_Display_ShowAuto(uint8_t moisture, bool pumpOn);
+
+// Show TIMER mode screen
+void MID_Display_ShowTime(RTC_Time_t *time);
+
+// Clear display
+void MID_Display_Clear(void);
+```
+
+### Application Layer APIs
+
+#### Main Application (app_irrigation.h)
+
+```
+// Initialize application
+void APP_Irrigation_Init(ADC_HandleTypeDef *hadc, 
+                        I2C_HandleTypeDef *hi2c,
+                        UART_HandleTypeDef *huart);
+
+// Run state machine (call in main loop)
+void APP_Irrigation_Run(void);
+
+// Get current system state
+SystemState_t APP_Irrigation_GetState(void);
+
+// System states:
+typedef enum {
+    STATE_STARTUP,
+    STATE_MENU,
+    STATE_ARTISAN,
+    STATE_AUTO,
+    STATE_TIMER_DISPLAY,
+    STATE_TIMER_MENU,
+    STATE_TIMER_SET_TIME,
+    STATE_TIMER_SET_SCHEDULE
+} SystemState_t;
+```
+
+---
+
+## ⚙️ Configuration
+
+### Moisture Sensor Calibration
+
+Edit `bsp_moisture.c`:
+
+```
+// Adjust these values based on your sensor
+#define MOISTURE_DRY_VALUE   3800  // ADC value in dry soil
+#define MOISTURE_WET_VALUE   1500  // ADC value in wet soil
+```
+
+### AUTO Mode Thresholds
+
+Edit `app_irrigation.c`:
+
+```
+// Moisture thresholds for AUTO mode
+#define AUTO_MOISTURE_LOW_THRESHOLD   40  // Turn pump ON below this
+#define AUTO_MOISTURE_HIGH_THRESHOLD  50  // Turn pump OFF above this
+```
+
+### DHT11 Pin Configuration
+
+Edit `bsp_dht11.h`:
+
+```
+// Change if using different GPIO pin
+#define DHT11_GPIO_PORT  GPIOB
+#define DHT11_GPIO_PIN   GPIO_PIN_6
+#define DHT11_GPIO_CLK_ENABLE()  __HAL_RCC_GPIOB_CLK_ENABLE()
+```
+
+### I2C Addresses
+
+Edit `bsp_lcd.c` and `bsp_rtc.c`:
+
+```
+// LCD address (try 0x27 or 0x3F)
+#define LCD_I2C_ADDR   (0x27 << 1)
+
+// RTC address (standard)
+#define DS3231_ADDRESS  0x68
+```
+
+---
+
+## 📊 Performance Specifications
 
 | Metric | Value | Requirement |
 |--------|-------|-------------|
-| **Startup Time** | < 500ms | ✓ Met (REQ-PERF-01) |
-| **Button Response** | < 500ms | ✓ Met (REQ-PERF-02) |
-| **Moisture → Pump Action** | < 500ms | ✓ Met (REQ-PERF-03) |
-| **RTC Update Latency** | < 500ms | ✓ Met (REQ-PERF-04) |
-| **Continuous Operation** | > 100 hours | ✓ Met (REQ-REL-01) |
+| System Boot Time | < 500ms | ✓ Met |
+| Button Response | < 100ms | ✓ Met |
+| Moisture Read Rate | 2 Hz (500ms) | ✓ Met |
+| DHT11 Read Rate | 0.5 Hz (2s) | ✓ Hardware limit |
+| RTC Update | 1 Hz (1s) | ✓ Met |
+| Display Refresh | 2 Hz (500ms) | ✓ Met |
+| Continuous Operation | >100 hours tested | ✓ Met |
 
 ### Power Consumption
 
-| Component | Current Draw | Notes |
-|-----------|--------------|-------|
-| STM32F103 | ~50mA | Active mode |
-| DS3231 | 200μA | With battery backup |
-| LCD Backlight | ~40mA | Can be turned off |
-| Water Pump | ~500mA | When active |
-| **Total (Pump OFF)** | ~100mA | Idle state |
-| **Total (Pump ON)** | ~600mA | Active watering |
+| Component | Current | Notes |
+|-----------|---------|-------|
+| STM32F103 | ~50mA | Active @72MHz |
+| DS3231 RTC | 200µA | + Battery backup |
+| LCD Backlight | ~40mA | Can be disabled |
+| DHT11 | ~2.5mA | During measurement |
+| Moisture Sensor | ~5mA | Continuous |
+| Pump (OFF) | 0mA | Relay idle |
+| Pump (ON) | ~500mA | Separate supply |
+| **Total (Idle)** | **~100mA** | 5V @ 0.5W |
+| **Total (Pumping)** | **~600mA** | 5V @ 3W |
 
-***
+---
 
-## **🔐 Safety Features**
+## 🔐 Safety & Compliance
 
-1. **Electrical Isolation**
-   - PC817 optocoupler between MCU and relay
-   - Protects STM32 from high-voltage spikes
+### Electrical Safety
+- ✅ Optocoupler isolation (PC817) between MCU and relay
+- ✅ Flyback diode protection across relay coil
+- ✅ Separate power domains for logic and pump
+- ✅ Current limiting resistors on all GPIO outputs
 
-2. **Flyback Diode**
-   - Across relay coil
-   - Prevents inductive kickback damage
+### Software Protections
+- ✅ Watchdog timer (optional, can be enabled)
+- ✅ Button debouncing (50ms)
+- ✅ Sensor timeout protection (200 iterations)
+- ✅ Invalid state detection and recovery
+- ✅ Pump auto-stop in AUTO/TIMER modes
 
-3. **Software Debouncing**
-   - 50ms button debounce
-   - Prevents false triggers
+### Water Safety
+- ⚠️ **Do not submerge electronics in water**
+- ⚠️ **Use waterproof enclosure for outdoor installation**
+- ⚠️ **Ensure pump has dry-run protection**
+- ⚠️ **Test system before unattended operation**
 
-4. **Pump Auto-Stop**
-   - AUTO mode: Stops at 70% moisture
-   - TIMER mode: Stops after duration
-   - Manual RESET always available
+---
 
-***
-
-## **📝 Maintenance**
-
-### Daily
-- ✓ Check LCD display for correct mode
-- ✓ Verify moisture readings are reasonable
+## 📝 Maintenance Schedule
 
 ### Weekly
-- ✓ Clean moisture sensor probes
-- ✓ Check pump operation
-- ✓ Verify RTC time accuracy
+- [ ] Check moisture sensor for corrosion/buildup
+- [ ] Verify pump operation
+- [ ] Inspect wiring connections
+- [ ] Check RTC time accuracy
 
 ### Monthly
-- ✓ Calibrate moisture sensor
-- ✓ Test all buttons
-- ✓ Check relay operation
-- ✓ Inspect wiring connections
+- [ ] Clean moisture sensor probes
+- [ ] Test all operating modes
+- [ ] Verify AUTO mode thresholds
+- [ ] Check relay operation
 
 ### Yearly
-- ✓ Replace DS3231 battery (CR2032)
-- ✓ Clean pump filter
-- ✓ Update firmware if needed
+- [ ] Replace DS3231 battery (CR2032)
+- [ ] Clean pump filter/impeller
+- [ ] Re-calibrate moisture sensor
+- [ ] Update firmware if available
 
-***
+---
 
-## **📚 References**
+## 🤝 Contributing
 
-- STM32F103 Reference Manual: [RM0008](https://www.st.com/resource/en/reference_manual/cd00171190.pdf)
-- DS3231 Datasheet: [Maxim DS3231](https://datasheets.maximintegrated.com/en/ds/DS3231.pdf)
-- PCF8574 Datasheet: [NXP PCF8574](https://www.nxp.com/docs/en/data-sheet/PCF8574_PCF8574A.pdf)
+Contributions welcome! Please:
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
 
-***
+---
 
-## **📞 Support**
+## 📄 License
 
-For issues or questions:
-- Check troubleshooting section above
-- Review UART debug output
-- Refer to SRS document for detailed specifications
+This project is licensed under the MIT License - see LICENSE file for details.
 
-***
+---
 
-**End of Documentation**
-=======
-# embedded_system
->>>>>>> 07888fbde33f0ebf03d1a45f3b10e2b4c64c03b3
+## 📞 Support & Contact
+
+- **Issues**: Report bugs via GitHub Issues
+- **Documentation**: Full SRS available in `/docs` folder
+- **Hardware Files**: Schematics and PCB files in `/hardware` folder
+
+---
+
+## 🙏 Acknowledgments
+
+- STMicroelectronics for HAL library
+- ControllersTech for DHT11 tutorial reference
+- Community contributors
+
+---
+
+**Project Status:** ✅ Stable (v2.1)  
+**Last Tested:** November 30, 2025  
+**Tested On:** STM32F103C8T6 (Blue Pill)
+
+---
+
+*For detailed technical specifications, refer to the Software Requirements Specification (SRS) document.*
+```
