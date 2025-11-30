@@ -1,1 +1,63 @@
+# Generic C/C++ & CMake build artifacts
 build/
+out/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# Object files, libraries, binaries, maps, listings
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.elf
+*.axf
+*.bin
+*.hex
+*.map
+*.lst
+*.srec
+*.dis
+*.d
+
+# Linker scripts, intermediate and dependency files
+*.tmp
+*.dep
+*.dSYM/
+*.map.*
+
+# IDE / editor settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.project
+.cproject
+.settings/
+*.launch
+
+# STM32CubeMX user files (keep .ioc but ignore per-user backups)
+*.ioc.user
+
+# PlatformIO
+.pio/
+.pioenvs/
+
+# Debug / tooling
+openocd.log
+stlink/
+*.log
+*.gdb_history
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Misc
+*.bak
+*.swp
+*~
