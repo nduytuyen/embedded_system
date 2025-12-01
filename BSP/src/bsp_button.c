@@ -6,7 +6,7 @@
 #include "bsp_button.h"
 
 static const uint16_t button_pins[BUTTON_COUNT] = {
-    GPIO_PIN_1,  // ARTISAN
+    GPIO_PIN_1,  // Manual
     GPIO_PIN_2,  // AUTO
     GPIO_PIN_3,  // TIMER
     GPIO_PIN_4,  // RESET
